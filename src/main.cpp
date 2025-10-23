@@ -44,6 +44,8 @@ struct LoadAverages {
 };
 
 #ifdef _WIN32
+// WindowsコンソールにANSIエスケープを許可する。
+// VTモードを有効化できない環境では false を返し画面更新を諦める。
 bool enable_virtual_terminal_processing() {
     HANDLE handle = GetStdHandle(STD_OUTPUT_HANDLE);
     if (handle == INVALID_HANDLE_VALUE) {
@@ -60,11 +62,15 @@ bool enable_virtual_terminal_processing() {
 }
 #endif
 
+// 端末をクリアしカーソルを先頭へ戻す。
+// 毎秒呼び出して最新状態だけを表示するための制御。
 void clear_screen() {
     std::cout << "\x1b[2J\x1b[H";
 }
 
 #ifdef _WIN32
+// FILETIME を 64bit 値へ詰め替えるヘルパー。
+// CPU 時刻計算で扱いやすいよう整数化する。
 std::uint64_t file_time_to_uint64(const FILETIME &ft) {
     ULARGE_INTEGER li;
     li.LowPart = ft.dwLowDateTime;
@@ -73,6 +79,8 @@ std::uint64_t file_time_to_uint64(const FILETIME &ft) {
 }
 #endif
 
+// OS 別にCPUの稼働/アイドル時間を取得してスナップショットに詰める。
+// 取得に失敗した場合は false を返し外側で終了を促す。
 bool sample_cpu(CpuSnapshot &snapshot) {
 #ifdef _WIN32
     FILETIME idle{}, kernel{}, user{};
@@ -119,6 +127,8 @@ bool sample_cpu(CpuSnapshot &snapshot) {
 #endif
 }
 
+// 直近2回のCPUスナップショットの差分から使用率を算出する。
+// 分母がゼロの場合は0%として扱い例外的なスパイクを避ける。
 double compute_cpu_usage(const CpuSnapshot &prev, const CpuSnapshot &curr) {
     const std::uint64_t idle_delta = curr.idle_ticks - prev.idle_ticks;
     const std::uint64_t total_delta = curr.total_ticks - prev.total_ticks;
@@ -129,6 +139,8 @@ double compute_cpu_usage(const CpuSnapshot &prev, const CpuSnapshot &curr) {
     return static_cast<double>(active_delta) * 100.0 / static_cast<double>(total_delta);
 }
 
+// 利用可能メモリと総容量を取得し、MiB表示に利用する。
+// 取得できない環境では valid を false のままとして扱う。
 MemoryStatus sample_memory() {
     MemoryStatus status{};
 #ifdef _WIN32
@@ -168,6 +180,8 @@ MemoryStatus sample_memory() {
     return status;
 }
 
+// 稼働中プロセス数を数え上げ、Tasks 行に利用する。
+// WindowsはAPI列挙、Linuxは /proc を巡回して集計する。
 TaskSummary sample_tasks() {
     TaskSummary summary{};
 #ifdef _WIN32
@@ -209,6 +223,8 @@ TaskSummary sample_tasks() {
     return summary;
 }
 
+// システムのロードアベレージを取得する。
+// Windowsでは取得不能なので valid=false として N/A 表示にする。
 LoadAverages sample_load_averages() {
     LoadAverages averages{};
 #ifdef _WIN32
@@ -225,6 +241,8 @@ LoadAverages sample_load_averages() {
     return averages;
 }
 
+// システムの稼働秒数を取得し uptime 表示に使用する。
+// Windows は GetTickCount64、Linux は /proc/uptime を参照する。
 std::uint64_t uptime_seconds() {
 #ifdef _WIN32
     return static_cast<std::uint64_t>(GetTickCount64() / 1000ULL);
@@ -239,6 +257,8 @@ std::uint64_t uptime_seconds() {
 #endif
 }
 
+// 秒数を「日, 時:分」形式へ整形し top 風の文字列を返す。
+// 1分未満の短時間は "XXs" として短く表示する。
 std::string format_uptime(std::uint64_t seconds) {
     std::ostringstream oss;
     if (seconds < 60) {
@@ -264,6 +284,8 @@ std::string format_uptime(std::uint64_t seconds) {
     return oss.str();
 }
 
+// 現在時刻を HH:MM:SS フォーマットで返す。
+// Windows/Linux それぞれのスレッドセーフな localtime を利用する。
 std::string current_time_string() {
     const auto now = std::chrono::system_clock::now();
     const std::time_t now_c = std::chrono::system_clock::to_time_t(now);
@@ -279,6 +301,8 @@ std::string current_time_string() {
     return oss.str();
 }
 
+// バイト数を MiB 単位の少数表記へ変換する。
+// 表示整形専用のヘルパーで、1桁の小数精度を持たせる。
 std::string format_memory_mib(std::uint64_t bytes) {
     const double mib = static_cast<double>(bytes) / (1024.0 * 1024.0);
     std::ostringstream oss;
@@ -287,6 +311,8 @@ std::string format_memory_mib(std::uint64_t bytes) {
 }
 } // namespace
 
+// 各種メトリクスを1秒周期で収集し、top風レイアウトで画面更新する。
+// 取得に失敗した場合はエラーメッセージを表示して終了する。
 int main() {
 #ifdef _WIN32
     enable_virtual_terminal_processing();
