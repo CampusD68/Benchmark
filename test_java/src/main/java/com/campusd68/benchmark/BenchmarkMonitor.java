@@ -1,4 +1,4 @@
-package com.campusd68.benchmark;
+﻿package com.campusd68.benchmark;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -72,7 +72,8 @@ public final class BenchmarkMonitor {
                 "$mode = 0;",
                 "if (-not [VT.NativeMethods]::GetConsoleMode($handle, [ref]$mode)) { exit 1 };",
                 "if ($mode -band 4) { exit 0 };",
-                "if ([VT.NativeMethods]::SetConsoleMode($handle, $mode -bor 4)) { exit 0 } else { exit 1 };");
+                "if ([VT.NativeMethods]::SetConsoleMode($handle, $mode -bor 4)) { exit 0 } else { exit 1 };"
+        );
         ProcessBuilder builder = new ProcessBuilder("powershell.exe", "-NoProfile", "-Command", script);
         builder.redirectErrorStream(true);
         try {
@@ -103,7 +104,7 @@ public final class BenchmarkMonitor {
         return (high << 32) | (low & 0xFFFFFFFFL);
     }
 
-    // OS 別にCPUの稼働/アイドル時間を取得してスナップショットに詰める。
+    // OS 別にCPUの稼働／アイドル時間を取得してスナップショットに詰める。
     // 取得に失敗した場合は false を返し外側で終了を促す。
     private static boolean sampleCpu(CpuSnapshot snapshot) {
         Objects.requireNonNull(snapshot, "snapshot");
@@ -218,7 +219,7 @@ public final class BenchmarkMonitor {
     }
 
     // システムの稼働秒数を取得し uptime 表示に使用する。
-    // Windows は GetTickCount64、Linux は /proc/uptime を参照する。
+    // Windows は boot 時刻との差分、Linux は /proc/uptime を参照する。
     private static long uptimeSeconds() {
         if (IS_WINDOWS) {
             if (WINDOWS_BOOT_EPOCH_MILLIS <= 0L) {
@@ -266,7 +267,7 @@ public final class BenchmarkMonitor {
         return builder.toString();
     }
 
-    // 現在時刻を HH:MM:SS フォーマットで返す。
+    // 現在時刻を HH:MM:SS 形式で返す。
     // Windows/Linux それぞれのスレッドセーフな localtime を利用する。
     private static String currentTimeString() {
         return CLOCK_FORMATTER.format(Instant.now());
